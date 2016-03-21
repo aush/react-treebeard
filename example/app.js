@@ -50,14 +50,95 @@ NodeViewer.propTypes = {
 class DemoTree extends React.Component {
     constructor(props){
         super(props);
-        this.state = {data};
+        this.state = {data: this.prepareData(data)};
         this.onToggle = this.onToggle.bind(this);
+    }
+    prepareData(unprepairedData) {
+        let idCounter = 0;
+        const getNewUniqueId = () => `<>__id${idCounter++}`;
+        for (var rootNode of this.uniformData(unprepairedData)) {
+            this.generateMissingIdsForNode(rootNode, getNewUniqueId);
+        }
+        return unprepairedData;
+    }
+    uniformData(unUniformedData) {
+        return Array.isArray(unUniformedData)
+            ? unUniformedData
+            : [unUniformedData];
+    }
+    generateMissingIdsForNode(node, generateId) {
+        if (node.id === undefined) {
+            node.id = generateId();
+        }
+        if (node.children) {
+            for (var childNode of node.children) {
+                this.generateMissingIdsForNode(childNode, generateId);
+            }
+        }
     }
     onToggle(node, toggled){
         if(this.state.cursor){this.state.cursor.active = false;}
         node.active = true;
-        if(node.children){ node.toggled = toggled; }
+        if(node.children){
+            node.toggled = toggled;
+            if (toggled) {
+                this.unToggleSameLevelNodesAndTreirChildren(node);
+            }
+        }
         this.setState({ cursor: node });
+    }
+    unToggleSameLevelNodesAndTreirChildren(targetNode) {
+        let isTargetNodeAsRootNode;
+        let parent;
+        const rootNodes = this.uniformData(this.state.data);
+        for (var rootNode of rootNodes) {
+            if (rootNode.id === targetNode.id) {
+                isTargetNodeAsRootNode = rootNode;
+                break;
+            }
+            const foundParent = this.findParent(targetNode, rootNode);
+            if (foundParent) {
+                parent = foundParent;
+                break;
+            }
+        }
+        let sameLevelNodes;
+        if (parent !== undefined && parent.children) {
+            sameLevelNodes = parent.children;
+        } else if (isTargetNodeAsRootNode) {
+            sameLevelNodes = rootNodes;
+        }
+        if (sameLevelNodes !== undefined) {
+            for (var sameLevelNode of sameLevelNodes) {
+                if (sameLevelNode.id !== targetNode.id) {
+                    sameLevelNode.toggled = false;
+                    this.untoggleChildren(sameLevelNode);
+                }
+            }
+        }
+    }
+    untoggleChildren(parentNode) {
+        if (parentNode.children) {
+            for (var childNode of parentNode.children) {
+                childNode.toggled = false;
+                this.untoggleChildren(childNode);
+            }
+        }
+    }
+    findParent(targetNode, examinedNode) {
+        if (examinedNode.children) {
+            for (var childNode of examinedNode.children) {
+                if (childNode.id === targetNode.id) {
+                    return examinedNode;
+                }
+                const parentFromChildNode = this.findParent(targetNode, childNode);
+                if (parentFromChildNode !== undefined) {
+                    return parentFromChildNode;
+                }
+            }
+            return undefined;
+        }
+        return undefined;
     }
     onFilterMouseUp(e){
         const filter = e.target.value.trim();
