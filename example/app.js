@@ -31,9 +31,34 @@ class NodeViewer extends React.Component {
     constructor(props){
         super(props);
     }
+    prepareNodeForDisplay(node) {
+        if (node) {
+            const clonedNode = JSON.parse(JSON.stringify(node, null, 4));
+
+            const removeGeneratedId = targetNode => {
+                if (targetNode &&
+                    targetNode.id &&
+                    targetNode.id.startsWith('<>__id')) {
+                    delete targetNode.id;
+                }
+                if (targetNode.children) {
+                    for (var childNode of targetNode.children) {
+                        removeGeneratedId(childNode);
+                    }
+                }
+            };
+
+            removeGeneratedId(clonedNode);
+
+            return clonedNode;
+        }
+
+        return undefined;
+    }
     render(){
         const style = styles.viewer;
-        let json = JSON.stringify(this.props.node, null, 4);
+        let json = JSON.stringify(
+            this.prepareNodeForDisplay(this.props.node), null, 4);
         if(!json){ json = HELP_MSG; }
         return (
             <div style={style.base}>
